@@ -1,0 +1,114 @@
+/* Formatted on 2/19/2017 2:22:18 PM (QP5 v5.163.1008.3004) */
+connect ${user}/${pass}@${db_name}
+
+set term off
+set echo off
+set head off
+set feedback off
+SET TERMOUT OFF
+set trimspool on
+set pagesize 0
+set lines 20000
+set pages 20000
+SET SERVEROUTPUT ON SIZE 1000000
+SET TIMING ON
+
+DECLARE
+   V_ACCNT_ROW_ID   SIEBEL.S_ORG_EXT.ROW_ID%TYPE;
+   v_ERR_STATUS     MKBAT.STG_SBL06_SLA_STATUS.ERR_STATUS%TYPE;
+   v_ERR_MSG        MKBAT.STG_SBL06_SLA_STATUS.ERR_MSG%TYPE;
+   i                INTEGER;
+   v_batch_size     INTEGER;
+
+   CURSOR Cur_SLA_DATE
+   IS
+      SELECT * FROM ${stagingtableschema}.${stagingtablename}
+      --SELECT * FROM MKBAT.STG_SBL06_SLA_STATUS STG
+       WHERE (1 = 1) AND ERR_STATUS = '0' AND (SLA_STATUS_NEW != 'NOT FOUND') ;
+	   --AND ACCOUNT_ID = '1-F2-1064';
+
+   v_rec            Cur_SLA_DATE%ROWTYPE;
+BEGIN
+   OPEN Cur_SLA_DATE;
+
+   i := 0;
+   v_batch_size := ${BatchSizeCurrent};
+   --v_batch_size := 500;
+
+   LOOP
+      FETCH Cur_SLA_DATE INTO v_rec;
+
+      EXIT WHEN Cur_SLA_DATE%NOTFOUND;
+
+      /********************************************************
+        1.  Query data in Siebel with ACCOUNT_ID
+      ********************************************************/
+      BEGIN
+         SELECT ACNT.ROW_ID
+           INTO V_ACCNT_ROW_ID
+           FROM SIEBEL.S_ORG_EXT ACNT
+          WHERE ACNT.ROW_ID = v_rec.ACCOUNT_ID;
+      EXCEPTION
+         WHEN NO_DATA_FOUND
+         THEN
+            v_ERR_STATUS := -2;
+            v_ERR_MSG := 'Cannot find this customer in Siebel : ' || SQLERRM;
+            GOTO END_OF_PROC;
+      END;
+
+      /********************************************************
+      2.  Case found: Update AccountSLAStatus and Update result to MKBAT
+      ********************************************************/
+      BEGIN
+         UPDATE SIEBEL.S_ORG_EXT ACCNT
+            SET ACCNT.X_SLA_STAT_CD = v_rec.SLA_STATUS_NEW,
+                ACCNT.LAST_UPD = SYSDATE
+          WHERE ACCNT.ROW_ID = v_rec.ACCOUNT_ID;
+      EXCEPTION
+         WHEN OTHERS
+         THEN
+            v_ERR_STATUS := -2;
+            v_ERR_MSG := 'Cannot update SLA_STATUS in Siebel : ' || SQLERRM;
+            GOTO END_OF_PROC;
+      END;
+
+      /********************************************************
+           3.  For successfully updated records
+       ********************************************************/
+      v_ERR_STATUS := 2;
+      v_ERR_MSG := NULL;
+
+     <<END_OF_PROC>>
+      /********************************************************
+           4.  Update record Status
+       ********************************************************/
+      BEGIN
+         UPDATE ${stagingtableschema}.${stagingtablename} STG
+         --UPDATE MKBAT.STG_SBL06_SLA_STATUS STG
+            SET STG.ERR_STATUS = v_ERR_STATUS,
+                STG.ERR_MSG = v_ERR_MSG,
+                STG.UPD_DTTM = SYSDATE
+          WHERE STG.ACCOUNT_ID = v_rec.ACCOUNT_ID;
+      EXCEPTION
+         WHEN OTHERS
+         THEN
+            DBMS_OUTPUT.PUT_LINE ('Can not update staging table : ' || SQLERRM);
+      END;
+      IF MOD (i, v_batch_size) = 0
+      THEN
+         COMMIT;
+      END IF;
+
+      i := i + 1;
+   END LOOP;
+
+   CLOSE Cur_SLA_DATE;
+
+   COMMIT;
+   DBMS_OUTPUT.PUT_LINE ('All Records:' || i);
+EXCEPTION
+   WHEN OTHERS
+   THEN
+      DBMS_OUTPUT.PUT_LINE ('Unexpected Error : ' || SQLERRM);
+END;
+/

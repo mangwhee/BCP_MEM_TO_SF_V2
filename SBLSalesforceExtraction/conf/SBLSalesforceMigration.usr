@@ -1,0 +1,16 @@
+#!/bin/ksh
+OutputType=${1:-UTF8}
+
+if [[ "${OutputType}" == "UTF8" ]]
+then
+    export NLS_LANG=AMERICAN_AMERICA.UTF8
+elif [[ "${OutputType}" == "ASCII" ]]
+then
+    export NLS_LANG=THAI_THAILAND.TH8TISASCII
+else
+    export NLS_LANG=AMERICAN_AMERICA.UTF8
+fi
+
+export db_name=PBCPP2
+export user=BCPMIG
+export pass=BCPMIG

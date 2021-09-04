@@ -1,0 +1,4 @@
+export NLS_LANG=THAI_THAILAND.TH8TISASCII
+export db_name=PBCPP2_STBY
+export user=SBL_SF_MIG
+export pass="Locus#@123!"

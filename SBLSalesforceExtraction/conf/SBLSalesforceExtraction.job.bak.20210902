@@ -1,0 +1,118 @@
+# CLEARSTGTBLACTION=truncate/drop
+# CLEARSTAGINGTABLESQL=ClearStagingTable_BusMon_1st_run.sql
+# STAGINGTABLESCHEMA=BCPMIG
+# STAGINGTABLENAME=STG_MEMBER_TO_SF
+# CLEARBKSTGTBLACTION=truncate/drop
+# CLEARBKSTAGINGTABLESQL=ClearBKStagingTable_BusMon_1st_run.sql
+# BKSTAGINGTABLESCHEMA=BCPMIG
+# BKSTAGINGTABLENAME=BK_STG_MEMBER_TO_SF
+# OUTPUTFILETYPE=UTF8/ASCII
+
+
+<JOB:SBLSalesforceMigration>
+	<SubJOB:MainFunction>
+	TEMPEXT="tmp"
+	DEBUG="Y"
+	## 01 - Clear bk staging table
+	CLEARBKSTGTBLFLAG="Y"
+	## 02 - Backup staging table
+	BKSTGTBLFLAG="Y"
+	## 03 - Clear staging table
+	CLEARSTGTBLFLAG="Y"
+	## 04 - Create staging table
+	CREATESTGTBLFLAG="Y"
+	## 05 - Create index
+	CREATEIDXFLAG="Y"
+	## 06 - Run Analyze Table
+	RUNANALYZETBLFLAG="Y"
+	## 07 - Run PLSQL
+	RUNPLSQLFLAG="Y"
+	DATAEXTRACTIONFLAG="Y"
+	## 08 - Run Sftp to destination server
+	SFTPFLAG="Y"
+	## 09 - Update Last Extract Date
+	UPDATELASTEXTRACTFLG="Y"
+	## ---
+	LASTEXTRACTTABLESCHEMA="BCPMIG"
+	LASTEXTRACTTABLE="STG_MEMBER_TO_SF_LAST_EXT"
+	INTERFACENAME="MEMBER_TO_SF"
+	OUTPUTFILETYPE="UTF8"
+	UFT8BOMFLAG="Y"
+	EMAILTAG="PRD:ExtractMemberSBLtoSF"
+	ADMINEMAIL="tayat.wattanasopon@nttdata.com,Kanokrat.Pinitchan@nttdata.com"
+	</SubJOB:MainFunction>
+	
+	##01
+	<SubJOB:ClearBKStagingTable>
+	CLEARBKSTGTBLACTION="DROP"
+	CLEARBKSTAGINGTABLESQL=011_ClearBKStagingTable_SBLSalesforceMigration.sql
+	BKSTAGINGTABLESCHEMA="BCPMIG"
+	BKSTAGINGTABLENAME="BK_STG_MEMBER_TO_SF"
+	EXPORTBKSTGTBLFLAG="Y"
+	EXPORTBKSTGTBLSQL=012_ExportBKStagingTable_SBLSalesforceMigration.sql
+	EXPORTOUTPUTFILE=012_ExportBKStagingTable_SBLSalesforceMigration_${DayRun}.txt
+	OUTPUTRETENTION=30
+	</SubJOB:ClearBKStagingTable>
+	
+	##02
+	<SubJOB:BackupStagingTable>
+	BACKUPSTGTABLESQL=021_BackupStagingTable_SBLSalesforceMigration.sql
+	</SubJOB:BackupStagingTable>
+	
+	##03
+	<SubJOB:ClearStagingTable>
+	CLEARSTGTBLACTION="DROP"
+	CLEARSTAGINGTABLESQL=031_ClearStagingTable_SBLSalesforceMigration.sql
+	STAGINGTABLESCHEMA="BCPMIG"
+	STAGINGTABLENAME="STG_MEMBER_TO_SF"
+	</SubJOB:ClearStagingTable>
+
+	##04
+	<SubJOB:CreateStagingTable>
+	CREATESTGTABLESQL=041_CreateStagingTable_SBLSalesforceMigration.sql
+	</SubJOB:CreateStagingTable>
+
+	##05
+	<SubJOB:CreateIdx>
+	CREATEIDXSTGTBLSQL=051_CreateIdx_SBLSalesforceMigration.sql
+	NOOFINDEX=2
+	IDXSCHEMA="BCPMIG BCPMIG"
+	IDXNAME="STG_MEMBER_TO_SF_CARD_NO STG_MEMBER_TO_SF_ERR_STATUS"
+	IDXTABLESCHEMA="BCPMIG BCPMIG"
+	IDXTABLENAME="STG_MEMBER_TO_SF STG_MEMBER_TO_SF"
+	IDXCOLNAME="CARD_NUMBER ERR_STATUS"
+	IDXTBLSPACENAME="USERS USERS"
+	</SubJOB:CreateIdx>
+
+	##06
+	<SubJOB:RunAnalyzeTable>
+	RUNANALYZETBLSQL=061_RunAnalyzeTable_SBLSalesforceMigration.sql
+	NOOFTABLE=1
+	ANALYZETABLESCHEMA="BCPMIG"
+	ANALYZETABLENAME="STG_MEMBER_TO_SF"
+	ESTIMATEPERCENT="100"
+	DEGREE="8"
+	</SubJOB:RunAnalyzeTable>
+
+	##07
+	<SubJOB:RunPLSQL>
+	NOOFPLSQL=1
+	USESTGTBL="Y"
+	PLSQLFILE="071_RunPLSQL_SBLSalesforceMigration.sql"
+	BATCHSIZE="5000"
+	CHECKERRSTATUSSQL=072_RunCheckErrorStatus_SBLSalesforceMigration.sql
+	PLSQLOUTPUTPREFIX="MEMBER_ACCOUNT_PROD"
+	PLSQLOUTPUTEXT="csv"
+	PLSQLOUTPUTPATH=${OutputPath}/${plsqloutputprefix}.${plsqloutputext}
+	PLSQLOUTPUTRETENTION=30
+	EOFFLAG="Y"
+	EOFFORMAT="${CountAllRecord}|EOF"
+	</SubJOB:RunPLSQL>
+
+	##09
+	<SubJOB:RunSFTP>
+	SFTPSERVER=172.19.108.67
+	SFTPUSER=sieb_to_sf_sftp
+	SFTPPATH=/salesforce_prd
+	</SubJOB:RunSFTP>
+</JOB:SBLSalesforceMigration>
