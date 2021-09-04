@@ -1,0 +1,90 @@
+EnvName=PROD
+PrefixFile=SWAP_POINT
+Schema=BCPBAT
+BatchNum=6300
+BatchSize=500
+ConcurrentEIM=1
+Organization=Bangchak, Bangkok
+Program=Bangchak Loyalty Program
+StgTable=${Schema}.STG_PARTNER_TXN
+SeqName=${Schema}.SEQ_STG_PARTNER_TXN
+PreSQL="${Schema}.P_BCP_PARTNER_TXN_PRE_SQL ('${Program}','${Organization}','${BatchNum}','${BatchSize}','${SeqName}')"
+IFBFile=eim_s_loy_txn.ifb
+EIMTable=EIM_LOY_TXN
+## -- Start For SQLLDR --
+RunSQLLoader=Y
+Delimiter=";"
+CheckDigitDelimiter="--"
+SplitFile="Y"
+SplitFileUniqueColNo=1
+SplitedPrefixName="SP"
+EditCTLFile="Y"
+EditCTLCMD="\${InPutFileName}|$(basename ${inboundfile})"
+BackupSTGALLRecords="Y"
+## -- End For SQLLDR --
+
+RunPreSQL=Y
+RunEIM=Y
+
+## -- Start Staging Cleanup
+PurgeStagingTableBackupFlg="Y"
+StagingTableBackupRetention=356
+## -- End Staging Cleanup
+
+## -- Start Post SQL --
+RunPostIfNoEIMData=Y
+RunPostSQL=Y
+#Time in Seconds
+SleepTime=60
+MaxSleepCnt=10
+PostSQL="${Schema}.P_BCP_PARTNER_TXN_POST_SQL ('${SleepTime}','${MaxSleepCnt}','${BatchSize}', '${PurgeStagingTableBackupFlg}', '${StagingTableBackupRetention}', '${BatchNum}')"
+## -- End Post SQL --
+
+## -- Start For Export Data --
+RunExportData="Y"
+ExportAllDataFlg="Y"
+ExportDataFileName=$(echo ${Queue}|grep "${RunNumber}" |awk -v FS="_${RunNumber}" '{print $1}')_RESULTS_$(date +"%Y%m%d_%H%M%S")
+ExportAllCriteria="INPUT_FILENAME like '%${Queue}%' ORDER BY STG_ROW_ID"
+ExportDataExtName=txt
+ExportSelectMainColumn="TB_CARD_NUMBER||'${Delimiter}'||CASE WHEN ERR_DESC LIKE '[BAT_PRE] TB_POINT must be integer and greater than zero%' AND TB_POINT >= 0 THEN TRIM(TO_CHAR(TRUNC(TB_POINT),'9,999,999,999,999'))||'.'||SUBSTR (TB_POINT,INSTR(TB_POINT,'.')+1) ELSE TRIM(TO_CHAR(TB_POINT,'9,999,999,999,999')) END ||'${Delimiter}'||TRIM(TO_CHAR(TB_MEM_TOT_POINT,'9,999,999,999,999'))||'${Delimiter}'||TRIM(TO_CHAR(TB_ADJUST_POINT,'9,999,999,999,999'))||'${Delimiter}'||TB_PARTNER_NAME||'${Delimiter}'||TB_PARTNER_PRODUCT||'${Delimiter}'||TB_TXN_TYPE||'${Delimiter}'||TB_TXN_CHNNL_CD||'${Delimiter}'||TB_COMMENTS||'${Delimiter}'||TB_REQUESTED_BY"
+ExportPrefixAdditionalCol=TB_COL
+## ExportSelectColumn="TB_CARD_NUMBER||'${Delimiter}'||TB_POINT||'${Delimiter}'||TB_MEM_TOT_POINT||'${Delimiter}'||TB_ADJUST_POINT||'${Delimiter}'||TB_PARTNER_NAME||'${Delimiter}'||TB_PARTNER_PRODUCT||'${Delimiter}'||TB_TXN_TYPE||'${Delimiter}'||TB_TXN_CHNNL_CD||'${Delimiter}'||TB_COMMENTS||'${Delimiter}'||TB_REQUESTED_BY|| '${Delimiter}'||TB_COL1||'${Delimiter}'||TB_COL2||'${Delimiter}'||TB_COL3||'${Delimiter}'||TB_COL4||'${Delimiter}'||TB_COL5||'${Delimiter}'||TB_COL6||'${Delimiter}'||TB_COL7||'${Delimiter}'||TB_COL8||'${Delimiter}'||TB_COL9||'${Delimiter}'||TB_COL10||'${Delimiter}'||TB_COL11||'${Delimiter}'||TB_COL12||'${Delimiter}'||TB_COL13||'${Delimiter}'||TB_COL14||'${Delimiter}'||TB_COL15||'${Delimiter}'||TB_COL16||'${Delimiter}'||TB_COL17||'${Delimiter}'||TB_COL18||'${Delimiter}'||TB_COL19||'${Delimiter}'||TB_COL20||'${Delimiter}'||TB_COL21||'${Delimiter}'||TB_COL22||'${Delimiter}'||TB_REMARK_STATUS||'${Delimiter}'||TB_REMARKS||'${Delimiter}'||STG_ROW_ID||'${Delimiter}'||INPUT_FILENAME||'${Delimiter}'||ERR_STATUS||'${Delimiter}'||ERR_DESC||'${Delimiter}'||TO_CHAR(UPD_DT,'MM/DD/YYYY HH24:MI:SS')||'${Delimiter}'||EIM_ROW_ID||'${Delimiter}'||TXN_ROW_ID||'${Delimiter}'||TO_CHAR(TB_TXN_DT,'MM/DD/YYYY HH24:MI:SS')||'${Delimiter}'||TB_TXN_STATUS"
+ExportTable=${Schema}.BK_STG_PARTNER_TXN
+ExportHeader="Y"
+ExportSuccessCriteriaFlg="N"
+ExportSuccessCriteria="ERR_STATUS > 0 AND INPUT_FILENAME like '%${Queue}%' ORDER BY STG_ROW_ID"
+ExportSuccessFileName=$(echo ${Queue}|grep "${RunNumber}" |awk -v FS="_${RunNumber}" '{print $1}')_SUCCESS_$(date +"%Y%m%d_%H%M%S")
+ExportSuccessExtName=txt
+ExportFailCriteriaFlg="N"
+ExportFailCriteria="ERR_STATUS < 0 AND INPUT_FILENAME like '%${Queue}%' ORDER BY STG_ROW_ID"
+ExportFailFileName=$(echo ${Queue}|grep "${RunNumber}" |awk -v FS="_${RunNumber}" '{print $1}')_FAIL_$(date +"%Y%m%d_%H%M%S")
+ExportFailExtName=txt
+ExportSysColFlg="Y"
+ExportSysCol="${Delimiter}TB_REMARK_STATUS${Delimiter}TB_REMARKS${Delimiter}STG_ROW_ID${Delimiter}INPUT_FILENAME${Delimiter}ERR_STATUS${Delimiter}ERR_DESC${Delimiter}UPD_DT${Delimiter}EIM_ROW_ID${Delimiter}TXN_ROW_ID${Delimiter}TB_TXN_DT${Delimiter}TB_TXN_STATUS"
+ExportSysColSQL="||'${Delimiter}'||TB_REMARK_STATUS||'${Delimiter}'||TB_REMARKS||'${Delimiter}'||STG_ROW_ID||'${Delimiter}'||INPUT_FILENAME||'${Delimiter}'||ERR_STATUS||'${Delimiter}'||ERR_DESC||'${Delimiter}'||TO_CHAR(UPD_DT,'MM/DD/YYYY HH24:MI:SS')||'${Delimiter}'||EIM_ROW_ID||'${Delimiter}'||TXN_ROW_ID||'${Delimiter}'||TO_CHAR(TB_TXN_DT,'MM/DD/YYYY HH24:MI:SS')||'${Delimiter}'||TB_TXN_STATUS"
+ExportSendEmailFlg="Y"
+ExportEmailList="BCPLocusHelp@locus.co.th,tayat@locus.co.th,SiriratN@bangchak.co.th,arunya@bangchak.co.th,jatupol@bangchak.co.th,phatsucha@bangchak.co.th,saengduan@bangchak.co.th,theerapong@bangchak.co.th,urassaya@bangchak.co.th,chosita@bangchak.co.th,Sushera.r@bangchak.co.th"
+ExportEmailSubject="[BCP-${EnvName}] Co-Promotion Partner/Point Adjust Report [${DayRunEmail}]"
+ExportEmailBody="
+The results of Co-Promotion Partner/Point Adjust Report \n
+=============================================== \n
+Upload File: $(echo ${ExportDataFileName}| awk -F"_RESULTS_" '{print $1}').${ExportDataExtName} \n
+Upload Date: ${DayRunEmail} \n 
+Result File: $(echo ${ExportEmailAttachment} |sed -e 's/\-a//g'  -e "s/$(echo ${outputpath}| sed -e 's/\.\//\\\.\\\//g')\///g") \n
+=============================================== \n
+"
+## -- End For Export Data --
+
+## Not used - MaxRecInSingleBatch=200
+HeaderFlg=Y
+TrailerFlg=Y
+InputPrefix=${PrefixFile}_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]
+InputExt=txt
+HeaderFileFormat="TB_CARD_NUMBER"
+EndOfFileFormat=*EOF*
+EIMStatusChk="('DUP_RECORD_EXISTS','IMPORTED')"
+## -- Start Input record no from Sequence
+SqlldrSEQ="Y"
+## -- End Input record no from Sequence
+
+
