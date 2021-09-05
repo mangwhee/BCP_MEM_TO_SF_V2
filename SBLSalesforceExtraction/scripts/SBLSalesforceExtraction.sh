@@ -78,9 +78,6 @@ adminemail="tayat@locus.co.th"
 #-------------------------------------------------------
 . ${ConfigPath}/library.ksh
 
-
-
-
 #-------------------------------------------------------
 # Validate Parameters
 #-------------------------------------------------------
@@ -2315,6 +2312,31 @@ iecho "#### 09 - End Run update Last Extract Date in Table [${lastextracttable}]
 iecho "###--------------------------------------------------------------------"
 iecho "### Start Main Program"
 iecho "###--------------------------------------------------------------------"
+
+
+
+	#-------------------------------------------------------
+	# Check whether there is a script is running or not?
+	#-------------------------------------------------------
+	iecho ""
+	iecho "#### 00 - Start Pre-Check previous process"
+	current_pid=$$
+	parent_pid=$(ps -o ppid= -p "${current_pid}")
+
+	iecho "My Current PID: [${current_pid}]"
+	iecho "My Parent PID: [${parent_pid}]"
+
+	pid=`ps -fu $(whoami) |grep -w "$(basename $0)" |grep -v grep | grep -v "${parent_pid}" |wc -l`
+	if [[ $pid -gt 0 ]]
+	then
+		ps -fu $(whoami) |grep -w "$(basename $0)" |grep -v grep | grep -v "${parent_pid}" | awk '{print "Found PID "$2" is running"}'
+		ierror "Exit 9: Batch extract data to salesforce is running."
+		exit 9
+	else
+		iecho "There is no any previous process running"
+	fi
+	iecho "#### 00 - End Pre-Check previous process"
+	iecho ""
 	if [[ "${clearbkstgtblflag}" == "Y" ]]
 	then
 		F01_ClearBkStgTbl;
