@@ -2329,6 +2329,8 @@ iecho "###--------------------------------------------------------------------"
 	pid=`ps -fu $(whoami) |grep -w "$(basename $0)" |grep -v grep | grep -v "${parent_pid}" |wc -l`
 	if [[ $pid -gt 0 ]]
 	then
+		FullProcessDesc=$(ps -fu $(whoami) |grep -w "$(basename $0)" |grep -v grep | grep -v "${parent_pid}")
+		iecho "Prcess: [${FullProcessDesc}]"
 		ps -fu $(whoami) |grep -w "$(basename $0)" |grep -v grep | grep -v "${parent_pid}" | awk '{print "Found PID "$2" is running"}'
 		ierror "Exit 9: Batch extract data to salesforce is running."
 		exit 9
