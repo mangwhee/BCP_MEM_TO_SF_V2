@@ -2339,6 +2339,10 @@ iecho "###--------------------------------------------------------------------"
 	fi
 	iecho "#### 00 - End Pre-Check previous process"
 	iecho ""
+
+	# TODO: Need to remove before production
+	sleep 90
+	
 	if [[ "${clearbkstgtblflag}" == "Y" ]]
 	then
 		F01_ClearBkStgTbl;
