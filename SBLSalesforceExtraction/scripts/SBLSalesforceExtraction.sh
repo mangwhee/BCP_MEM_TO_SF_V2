@@ -2330,9 +2330,23 @@ iecho "###--------------------------------------------------------------------"
 	if [[ $pid -gt 0 ]]
 	then
 		FullProcessDesc=$(ps -fu $(whoami) |grep -w "$(basename $0)" |grep -v grep | grep -v "${parent_pid}")
-		iecho "Prcess: [${FullProcessDesc}]"
-		ps -fu $(whoami) |grep -w "$(basename $0)" |grep -v grep | grep -v "${parent_pid}" | awk '{print "Found PID "$2" is running"}'
-		ierror "Exit 9: Batch extract data to salesforce is running."
+		for ProcessLine in ${FullProcessDesc}
+		do
+			ierror "Running Process is: ${ProcessLine}"
+		done
+		ierror ""
+		ps -fu $(whoami) |grep -w "$(basename $0)" |grep -v grep | grep -v "${parent_pid}" | awk '{print $2}' | while read ProcessID
+		do
+			ierror "Found PID ${ProcessID} is runnning"
+		done
+		# ps -fu $(whoami) |grep -w "$(basename $0)" |grep -v grep | grep -v "${parent_pid}" | awk '{print "Found PID "$2" is running"}'
+		ErrorMessage="Exit 9: Found another batch extract data to salesforce is running."
+		ierror "-----------"
+		ierror "${ErrorMessage}"
+		ierror "-----------"
+		ErrorEmailSubject="${ErrorMessage}"
+		ErrorEmailBody="${ErrorMessage}"
+		SEND_EMAIL_FUNC "${emailtag}" "${ErrorEmailSubject}" "${ErrorEmailBody}" "${adminemail}"
 		exit 9
 	else
 		iecho "There is no any previous process running"
