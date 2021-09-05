@@ -2325,19 +2325,18 @@ iecho "###--------------------------------------------------------------------"
 
 	iecho "My Current PID: [${current_pid}]"
 	iecho "My Parent PID: [${parent_pid}]"
-
-	pid=`ps -fu $(whoami) |grep -w "$(basename $0)" |grep -v grep | grep -v "${parent_pid}" |wc -l`
+	iecho ""
+	pid=`ps -fu $(whoami) |grep -w "$(basename $0)" | grep -w "${JobName}" |grep -v grep | grep -v "${parent_pid}" |wc -l`
 	if [[ $pid -gt 0 ]]
 	then
-		FullProcessDesc=$(ps -fu $(whoami) |grep -w "$(basename $0)" |grep -v grep | grep -v "${parent_pid}")
-		for ProcessLine in ${FullProcessDesc}
+		ps -fu $(whoami) |grep -w "$(basename $0)" | grep -w "${JobName}" |grep -v grep | grep -v "${parent_pid}" | while read FullProcessDesc
 		do
-			ierror "Running Process is: ${ProcessLine}"
+			ierror "Running Process is: [${FullProcessDesc}]"
 		done
 		ierror ""
-		ps -fu $(whoami) |grep -w "$(basename $0)" |grep -v grep | grep -v "${parent_pid}" | awk '{print $2}' | while read ProcessID
+		ps -fu $(whoami) |grep -w "$(basename $0)" | grep -w "${JobName}" |grep -v grep | grep -v "${parent_pid}" | awk '{print $2}' | while read ProcessID
 		do
-			ierror "Found PID ${ProcessID} is runnning"
+			ierror "Found PID [${ProcessID}] is runnning"
 		done
 		# ps -fu $(whoami) |grep -w "$(basename $0)" |grep -v grep | grep -v "${parent_pid}" | awk '{print "Found PID "$2" is running"}'
 		ErrorMessage="Exit 9: Found another batch extract data to salesforce is running."
@@ -2350,12 +2349,13 @@ iecho "###--------------------------------------------------------------------"
 		exit 9
 	else
 		iecho "There is no any previous process running"
+		iecho ""
 	fi
 	iecho "#### 00 - End Pre-Check previous process"
 	iecho ""
 
 	# TODO: Need to remove before production
-	sleep 90
+	sleep 180
 	
 	if [[ "${clearbkstgtblflag}" == "Y" ]]
 	then
