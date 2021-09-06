@@ -2355,7 +2355,7 @@ iecho "###--------------------------------------------------------------------"
 	iecho ""
 
 	# TODO: Need to remove before production
-	sleep 180
+	# sleep 180
 	
 	if [[ "${clearbkstgtblflag}" == "Y" ]]
 	then
